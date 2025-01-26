@@ -1,0 +1,184 @@
+local UserInputService = game:GetService("User InputService")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+local MAX_SPEED = 1000
+local MIN_SPEED = 0
+local speed = 115
+local isSpeedToggled = false
+local previousSpeed = speed
+local collisionToggle = false
+local ClosestATV = nil
+local Enabled = false
+local atvbypass = true
+local noatvrestriction = true -- Automatically enable no look restriction
+
+-- Function to clamp speed
+local function clampSpeed(value, min, max)
+    return math.max(min, math.min(max, value))
+end
+
+-- Function to adjust speed
+local function adjustSpeed(amount)
+    speed = clampSpeed(speed + amount, MIN_SPEED, MAX_SPEED)
+end
+
+-- Function to toggle speed
+local function toggleSpeed()
+    if isSpeedToggled then
+        speed = previousSpeed
+    else
+        previousSpeed = speed
+        speed = 28
+    end
+    isSpeedToggled = not isSpeedToggled
+end
+
+-- Function to get the closest ATV
+local function GetClosestATV()
+    local closestATV, closestDistance = nil, math.huge
+
+    for _, v in ipairs(Workspace:GetChildren()) do
+        if v:FindFirstChild("Seat") and v:FindFirstChild("Plastics") then
+            local distance = (v.Plastics.Position - Workspace.Ignore.LocalCharacter.Middle.Position).Magnitude
+            if distance < closestDistance then
+                closestATV = v
+                closestDistance = distance
+            end
+        end
+    end
+
+    return closestATV
+end
+
+-- Function to toggle ATV collision
+local function toggleATVCollision()
+    if not ClosestATV then return end
+
+    collisionToggle = not collisionToggle
+    for _, part in ipairs(ClosestATV:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = collisionToggle
+        end
+    end
+end
+
+-- Function for Fly Hack
+local function FlyHack()
+    RunService.RenderStepped:Connect(function()
+        ClosestATV = GetClosestATV()
+        if Enabled and ClosestATV then
+            local plastics = ClosestATV.Plastics
+            plastics.Velocity = Vector3.zero
+
+            local flip2 = ClosestATV.Frame:FindFirstChild("Flip2")
+            if not flip2 then
+                local newFlip = ClosestATV.Frame.Flip:Clone()
+                newFlip.Name = "Flip2"
+                newFlip.Enabled = true
+                newFlip.Parent = ClosestATV.Frame
+            else
+                flip2.Enabled = true
+            end
+
+            local travel = Vector3.zero
+            local cameraCFrame = Workspace.CurrentCamera.CFrame
+
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+                travel += cameraCFrame.LookVector
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+                travel -= cameraCFrame.LookVector
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+                travel += cameraCFrame.RightVector
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+                travel -= cameraCFrame.RightVector
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.X) then
+                travel += cameraCFrame.UpVector
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+                travel -= cameraCFrame.UpVector
+            end
+
+            if travel.Magnitude > 0 then
+                plastics.Anchored = false
+                plastics.Velocity = travel.Unit * speed
+            else
+                plastics.Velocity = Vector3.zero
+                plastics.Anchored = false
+            end
+        else
+            local flip2 = ClosestATV and ClosestATV.Frame:FindFirstChild("Flip2")
+            if flip2 then
+                flip2.Enabled = false
+            end
+        end
+    end)
+end
+
+-- Function to enable no look restriction
+local function enableNoLookRestriction()
+    local camera = nil
+
+    -- Find the camera object in the game's global context
+    for _, v in pairs(getgc(true)) do
+        if type(v) == "table" and type(rawget(v, "SetMaxRelativeLookExtentsY")) == "function" then
+            camera = v
+            break
+        end
+    end
+
+    if camera then
+        task.spawn(function()
+            while wait() do
+                if noatvrestriction then
+                    camera:SetMaxRelativeLookExtentsY(10000) -- Set to a high value to remove look restrictions
+                end
+            end
+        end)
+    end
+end
+
+-- Enable no look restriction immediately
+enableNoLookRestriction()
+
+-- User input handling
+User InputService.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.V then
+        adjustSpeed(5)
+    elseif input.KeyCode == Enum.KeyCode.N then
+        adjustSpeed(-5 elseif input.KeyCode == Enum.KeyCode.Q then
+        toggleSpeed()
+    elseif input.KeyCode == Enum.KeyCode.Z then
+        Enabled = not Enabled
+    elseif input.KeyCode == Enum.KeyCode.F then
+        toggleATVCollision()
+    elseif input.KeyCode == Enum.KeyCode.R and UserInputService:IsKeyDown(Enum.KeyCode.RightShift) then
+        if ClosestATV then
+            ClosestATV:SetPrimaryPartCFrame(ClosestATV.PrimaryPart.CFrame * CFrame.Angles(0, math.rad(-5), 0))
+        end
+    elseif input.KeyCode == Enum.KeyCode.L and UserInputService:IsKeyDown(Enum.KeyCode.RightShift) then
+        if ClosestATV then
+            ClosestATV:SetPrimaryPartCFrame(ClosestATV.PrimaryPart.CFrame * CFrame.Angles(0, math.rad(5), 0))
+        end
+    end
+end)
+
+FlyHack()
+
+RunService.RenderStepped:Connect(function()
+    for _, v in ipairs(Workspace:GetChildren()) do
+        local frame = v:FindFirstChild("Frame")
+        if frame then
+            local flip = frame:FindFirstChild("Flip")
+            if flip and atvbypass then
+                flip.Enabled = true
+                flip.RigidityEnabled = true
+                flip.Responsiveness = math.huge
+            end
+        end
+    end
+end)
