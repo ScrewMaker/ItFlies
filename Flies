@@ -1,4 +1,4 @@
-local UserInputService = game:GetService("User InputService")
+local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
@@ -11,19 +11,15 @@ local collisionToggle = false
 local ClosestATV = nil
 local Enabled = false
 local atvbypass = true
-local noatvrestriction = true -- Automatically enable no look restriction
 
--- Function to clamp speed
 local function clampSpeed(value, min, max)
     return math.max(min, math.min(max, value))
 end
 
--- Function to adjust speed
 local function adjustSpeed(amount)
     speed = clampSpeed(speed + amount, MIN_SPEED, MAX_SPEED)
 end
 
--- Function to toggle speed
 local function toggleSpeed()
     if isSpeedToggled then
         speed = previousSpeed
@@ -34,7 +30,6 @@ local function toggleSpeed()
     isSpeedToggled = not isSpeedToggled
 end
 
--- Function to get the closest ATV
 local function GetClosestATV()
     local closestATV, closestDistance = nil, math.huge
 
@@ -51,7 +46,6 @@ local function GetClosestATV()
     return closestATV
 end
 
--- Function to toggle ATV collision
 local function toggleATVCollision()
     if not ClosestATV then return end
 
@@ -63,7 +57,6 @@ local function toggleATVCollision()
     end
 end
 
--- Function for Fly Hack
 local function FlyHack()
     RunService.RenderStepped:Connect(function()
         ClosestATV = GetClosestATV()
@@ -119,48 +112,22 @@ local function FlyHack()
     end)
 end
 
--- Function to enable no look restriction
-local function enableNoLookRestriction()
-    local camera = nil
-
-    -- Find the camera object in the game's global context
-    for _, v in pairs(getgc(true)) do
-        if type(v) == "table" and type(rawget(v, "SetMaxRelativeLookExtentsY")) == "function" then
-            camera = v
-            break
-        end
-    end
-
-    if camera then
-        task.spawn(function()
-            while wait() do
-                if noatvrestriction then
-                    camera:SetMaxRelativeLookExtentsY(10000) -- Set to a high value to remove look restrictions
-                end
-            end
-        end)
-    end
-end
-
--- Enable no look restriction immediately
-enableNoLookRestriction()
-
--- User input handling
-User InputService.InputBegan:Connect(function(input)
+UserInputService.InputBegan:Connect(function(input)
     if input.KeyCode == Enum.KeyCode.V then
         adjustSpeed(5)
     elseif input.KeyCode == Enum.KeyCode.N then
-        adjustSpeed(-5 elseif input.KeyCode == Enum.KeyCode.Q then
+        adjustSpeed(-5)
+    elseif input.KeyCode == Enum.KeyCode.Q then
         toggleSpeed()
     elseif input.KeyCode == Enum.KeyCode.Z then
         Enabled = not Enabled
     elseif input.KeyCode == Enum.KeyCode.F then
         toggleATVCollision()
-    elseif input.KeyCode == Enum.KeyCode.R and UserInputService:IsKeyDown(Enum.KeyCode.RightShift) then
+    elseif input.KeyCode == Enum.KeyCode.< and UserInputService:IsKeyDown(Enum.KeyCode.RightShift) then
         if ClosestATV then
             ClosestATV:SetPrimaryPartCFrame(ClosestATV.PrimaryPart.CFrame * CFrame.Angles(0, math.rad(-5), 0))
         end
-    elseif input.KeyCode == Enum.KeyCode.L and UserInputService:IsKeyDown(Enum.KeyCode.RightShift) then
+    elseif input.KeyCode == Enum.KeyCode.> and UserInputService:IsKeyDown(Enum.KeyCode.RightShift) then
         if ClosestATV then
             ClosestATV:SetPrimaryPartCFrame(ClosestATV.PrimaryPart.CFrame * CFrame.Angles(0, math.rad(5), 0))
         end
