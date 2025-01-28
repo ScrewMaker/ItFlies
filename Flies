@@ -11,6 +11,8 @@ local collisionToggle = false
 local ClosestATV = nil
 local Enabled = false
 local atvbypass = true
+local isCharacterFrozen = false
+local isATVFrozen = false
 
 local function clampSpeed(value, min, max)
     return math.max(min, math.min(max, value))
@@ -112,6 +114,41 @@ local function FlyHack()
     end)
 end
 
+local function toggleCharacterFreeze()
+    local character = Workspace.Ignore.LocalCharacter
+    if isCharacterFrozen then
+        -- When unfrozen, re-enable collision for all parts of the character
+        for _, part in ipairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+        character.HumanoidRootPart.Anchored = false
+        isCharacterFrozen = false
+    else
+        -- When frozen, disable collision for all parts of the character (no-clip mode)
+        for _, part in ipairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+        character.HumanoidRootPart.Anchored = true
+        isCharacterFrozen = true
+    end
+end
+
+local function toggleATVFreeze()
+    if not ClosestATV then return end
+    local atv = ClosestATV
+    if isATVFrozen then
+        atv.Plastics.Anchored = false
+        isATVFrozen = false
+    else
+        atv.Plastics.Anchored = true
+        isATVFrozen = true
+    end
+end
+
 UserInputService.InputBegan:Connect(function(input)
     if input.KeyCode == Enum.KeyCode.V then
         adjustSpeed(5)
@@ -123,6 +160,16 @@ UserInputService.InputBegan:Connect(function(input)
         Enabled = not Enabled
     elseif input.KeyCode == Enum.KeyCode.F then
         toggleATVCollision()
+        if ClosestATV then
+            ClosestATV.Plastics.CanCollide = not ClosestATV.Plastics.CanCollide
+        end
+    elseif input.KeyCode == Enum.KeyCode.L then
+        toggleCharacterFreeze()
+    elseif input.KeyCode == Enum.KeyCode.E then
+        local character = Workspace.Ignore.LocalCharacter
+        if character and character.HumanoidRootPart then
+            character.HumanoidRootPart.CFrame = character.HumanoidRootPart.CFrame + Vector3.new(0, 5, 0)  -- Move character up
+        end
     elseif input.KeyCode == Enum.KeyCode.A and UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
         if ClosestATV then
             ClosestATV:SetPrimaryPartCFrame(ClosestATV.PrimaryPart.CFrame * CFrame.Angles(0, math.rad(-5), 0))
@@ -130,6 +177,39 @@ UserInputService.InputBegan:Connect(function(input)
     elseif input.KeyCode == Enum.KeyCode.D and UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
         if ClosestATV then
             ClosestATV:SetPrimaryPartCFrame(ClosestATV.PrimaryPart.CFrame * CFrame.Angles(0, math.rad(5), 0))
+        end
+    end
+end)
+
+RunService.RenderStepped:Connect(function()
+    local character = Workspace.Ignore.LocalCharacter
+    if isCharacterFrozen then
+        -- When character is frozen, we still allow WASD movement but keep it in the same position
+        local travel = Vector3.zero
+        local cameraCFrame = Workspace.CurrentCamera.CFrame
+
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+            travel += cameraCFrame.LookVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+            travel -= cameraCFrame.LookVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+            travel += cameraCFrame.RightVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+            travel -= cameraCFrame.RightVector
+        end
+
+        if travel.Magnitude > 0 then
+            -- Keep the character frozen but allow movement
+            character.HumanoidRootPart.CFrame = character.HumanoidRootPart.CFrame + travel.Unit * speed * RunService.RenderStepped:Wait()
+        end
+    else
+        -- If not frozen, allow regular movement using WASD
+        local humanoid = character:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid:Move(Vector3.new())
         end
     end
 end)
