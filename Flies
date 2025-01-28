@@ -144,11 +144,11 @@ UserInputService.InputBegan:Connect(function(input)
         Enabled = not Enabled
     elseif input.KeyCode == Enum.KeyCode.F then
         toggleATVCollision()
-    elseif input.KeyCode == Enum.KeyCode.< and UserInputService:IsKeyDown(Enum.KeyCode.RightShift) then
+    elseif input.KeyCode == Enum.KeyCode.L and UserInputService:IsKeyDown(Enum.KeyCode.RightShift) then
         if ClosestATV then
             ClosestATV:SetPrimaryPartCFrame(ClosestATV.PrimaryPart.CFrame * CFrame.Angles(0, math.rad(-5), 0))
         end
-    elseif input.KeyCode == Enum.KeyCode.> and UserInputService:IsKeyDown(Enum.KeyCode.RightShift) then
+    elseif input.KeyCode == Enum.KeyCode.R and UserInputService:IsKeyDown(Enum.KeyCode.RightShift) then
         if ClosestATV then
             ClosestATV:SetPrimaryPartCFrame(ClosestATV.PrimaryPart.CFrame * CFrame.Angles(0, math.rad(5), 0))
         end
