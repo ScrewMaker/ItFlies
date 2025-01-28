@@ -2,8 +2,8 @@ local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
-local MAX_SPEED = 1000
-local MIN_SPEED = 0
+local MAX_SPEED = 35
+local MIN_SPEED = 1
 local speed = 115
 local isSpeedToggled = false
 local previousSpeed = speed
@@ -11,8 +11,10 @@ local collisionToggle = false
 local ClosestATV = nil
 local Enabled = false
 local atvbypass = true
-local isCharacterFrozen = false
-local isATVFrozen = false
+
+local DesyncRotationSpeed = 5
+local flipToggle = true
+local noatvrestriction = true -- No look restriction always enabled (remove if no longer needed)
 
 local function clampSpeed(value, min, max)
     return math.max(min, math.min(max, value))
@@ -57,6 +59,23 @@ local function toggleATVCollision()
             part.CanCollide = collisionToggle
         end
     end
+end
+
+local function toggleFlip()
+    if ClosestATV then
+        local frame = ClosestATV:FindFirstChild("Frame")
+        if frame then
+            local flip = frame:FindFirstChild("Flip")
+            local flip2 = frame:FindFirstChild("Flip2")
+
+            if flip then flip.Enabled = flipToggle end
+            if flip2 then flip2.Enabled = flipToggle end
+
+            print("Flip/Flip2 is now " .. (flipToggle and "enabled" or "disabled"))
+        end
+    end
+
+    flipToggle = not flipToggle
 end
 
 local function FlyHack()
@@ -114,69 +133,6 @@ local function FlyHack()
     end)
 end
 
-local function toggleCharacterFreeze()
-    local character = Workspace.Ignore.LocalCharacter
-    if isCharacterFrozen then
-        -- When unfrozen, re-enable collision for all parts of the character
-        for _, part in ipairs(character:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = true
-            end
-        end
-        character.HumanoidRootPart.Anchored = false
-        isCharacterFrozen = false
-    else
-        -- When frozen, disable collision for all parts of the character (no-clip mode)
-        for _, part in ipairs(character:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = false
-            end
-        end
-        character.HumanoidRootPart.Anchored = true
-        isCharacterFrozen = true
-    end
-end
-
-local function toggleATVFreeze()
-    if not ClosestATV then return end
-    local atv = ClosestATV
-    local currentPos = atv.Plastics.Position  -- Store initial position
-    
-    if isATVFrozen then
-        atv.Plastics.Anchored = false
-        isATVFrozen = false
-    else
-        atv.Plastics.Anchored = false
-        isATVFrozen = true
-        -- Listen for movement input
-        RunService.RenderStepped:Connect(function()
-            if isATVFrozen then
-                local travel = Vector3.zero
-                local cameraCFrame = Workspace.CurrentCamera.CFrame
-
-                -- Movement input (WASD)
-                if UserInputService:IsKeyDown(Enum.KeyCode.W) then
-                    travel += cameraCFrame.LookVector
-                end
-                if UserInputService:IsKeyDown(Enum.KeyCode.S) then
-                    travel -= cameraCFrame.LookVector
-                end
-                if UserInputService:IsKeyDown(Enum.KeyCode.D) then
-                    travel += cameraCFrame.RightVector
-                end
-                if UserInputService:IsKeyDown(Enum.KeyCode.A) then
-                    travel -= cameraCFrame.RightVector
-                end
-
-                -- Make the ATV move based on WASD input, while preserving its height (Y position)
-                local newPos = Vector3.new(currentPos.X + travel.X, currentPos.Y, currentPos.Z + travel.Z)
-                atv:SetPrimaryPartCFrame(CFrame.new(newPos))
-            end
-        end)
-    end
-end
-
--- Key bindings for E and K to move the ATV up and down
 UserInputService.InputBegan:Connect(function(input)
     if input.KeyCode == Enum.KeyCode.V then
         adjustSpeed(5)
@@ -188,57 +144,13 @@ UserInputService.InputBegan:Connect(function(input)
         Enabled = not Enabled
     elseif input.KeyCode == Enum.KeyCode.F then
         toggleATVCollision()
+    elseif input.KeyCode == Enum.KeyCode.< and UserInputService:IsKeyDown(Enum.KeyCode.RightShift) then
         if ClosestATV then
-            ClosestATV.Plastics.CanCollide = not ClosestATV.Plastics.CanCollide
+            ClosestATV:SetPrimaryPartCFrame(ClosestATV.PrimaryPart.CFrame * CFrame.Angles(0, math.rad(-5), 0))
         end
-    elseif input.KeyCode == Enum.KeyCode.L then
-        toggleCharacterFreeze()
-    elseif input.KeyCode == Enum.KeyCode.E and isATVFrozen then
-        -- Move the ATV up when E is pressed
-        local atv = ClosestATV
-        if atv then
-            local currentPos = atv.Plastics.Position
-            atv:SetPrimaryPartCFrame(CFrame.new(currentPos.X, currentPos.Y + 5, currentPos.Z))  -- Move up by 5 units
-        end
-    elseif input.KeyCode == Enum.KeyCode.K and isATVFrozen then
-        -- Move the ATV down when K is pressed
-        local atv = ClosestATV
-        if atv then
-            local currentPos = atv.Plastics.Position
-            atv:SetPrimaryPartCFrame(CFrame.new(currentPos.X, currentPos.Y - 5, currentPos.Z))  -- Move down by 5 units
-        end
-    end
-end)
-
-RunService.RenderStepped:Connect(function()
-    local character = Workspace.Ignore.LocalCharacter
-    if isCharacterFrozen then
-        -- When character is frozen, we still allow WASD movement but keep it in the same position
-        local travel = Vector3.zero
-        local cameraCFrame = Workspace.CurrentCamera.CFrame
-
-        if UserInputService:IsKeyDown(Enum.KeyCode.W) then
-            travel += cameraCFrame.LookVector
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.S) then
-            travel -= cameraCFrame.LookVector
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.D) then
-            travel += cameraCFrame.RightVector
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.A) then
-            travel -= cameraCFrame.RightVector
-        end
-
-        if travel.Magnitude > 0 then
-            -- Keep the character frozen but allow movement
-            character.HumanoidRootPart.CFrame = character.HumanoidRootPart.CFrame + travel.Unit * speed * RunService.RenderStepped:Wait()
-        end
-    else
-        -- If not frozen, allow regular movement using WASD
-        local humanoid = character:FindFirstChild("Humanoid")
-        if humanoid then
-            humanoid:Move(Vector3.new())
+    elseif input.KeyCode == Enum.KeyCode.> and UserInputService:IsKeyDown(Enum.KeyCode.RightShift) then
+        if ClosestATV then
+            ClosestATV:SetPrimaryPartCFrame(ClosestATV.PrimaryPart.CFrame * CFrame.Angles(0, math.rad(5), 0))
         end
     end
 end)
