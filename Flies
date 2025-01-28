@@ -140,15 +140,43 @@ end
 local function toggleATVFreeze()
     if not ClosestATV then return end
     local atv = ClosestATV
+    local currentPos = atv.Plastics.Position  -- Store initial position
+    
     if isATVFrozen then
         atv.Plastics.Anchored = false
         isATVFrozen = false
     else
-        atv.Plastics.Anchored = true
+        atv.Plastics.Anchored = false
         isATVFrozen = true
+        -- Listen for movement input
+        RunService.RenderStepped:Connect(function()
+            if isATVFrozen then
+                local travel = Vector3.zero
+                local cameraCFrame = Workspace.CurrentCamera.CFrame
+
+                -- Movement input (WASD)
+                if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+                    travel += cameraCFrame.LookVector
+                end
+                if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+                    travel -= cameraCFrame.LookVector
+                end
+                if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+                    travel += cameraCFrame.RightVector
+                end
+                if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+                    travel -= cameraCFrame.RightVector
+                end
+
+                -- Make the ATV move based on WASD input, while preserving its height (Y position)
+                local newPos = Vector3.new(currentPos.X + travel.X, currentPos.Y, currentPos.Z + travel.Z)
+                atv:SetPrimaryPartCFrame(CFrame.new(newPos))
+            end
+        end)
     end
 end
 
+-- Key bindings for E and K to move the ATV up and down
 UserInputService.InputBegan:Connect(function(input)
     if input.KeyCode == Enum.KeyCode.V then
         adjustSpeed(5)
@@ -165,18 +193,19 @@ UserInputService.InputBegan:Connect(function(input)
         end
     elseif input.KeyCode == Enum.KeyCode.L then
         toggleCharacterFreeze()
-    elseif input.KeyCode == Enum.KeyCode.E then
-        local character = Workspace.Ignore.LocalCharacter
-        if character and character.HumanoidRootPart then
-            character.HumanoidRootPart.CFrame = character.HumanoidRootPart.CFrame + Vector3.new(0, 5, 0)  -- Move character up
+    elseif input.KeyCode == Enum.KeyCode.E and isATVFrozen then
+        -- Move the ATV up when E is pressed
+        local atv = ClosestATV
+        if atv then
+            local currentPos = atv.Plastics.Position
+            atv:SetPrimaryPartCFrame(CFrame.new(currentPos.X, currentPos.Y + 5, currentPos.Z))  -- Move up by 5 units
         end
-    elseif input.KeyCode == Enum.KeyCode.A and UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
-        if ClosestATV then
-            ClosestATV:SetPrimaryPartCFrame(ClosestATV.PrimaryPart.CFrame * CFrame.Angles(0, math.rad(-5), 0))
-        end
-    elseif input.KeyCode == Enum.KeyCode.D and UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
-        if ClosestATV then
-            ClosestATV:SetPrimaryPartCFrame(ClosestATV.PrimaryPart.CFrame * CFrame.Angles(0, math.rad(5), 0))
+    elseif input.KeyCode == Enum.KeyCode.K and isATVFrozen then
+        -- Move the ATV down when K is pressed
+        local atv = ClosestATV
+        if atv then
+            local currentPos = atv.Plastics.Position
+            atv:SetPrimaryPartCFrame(CFrame.new(currentPos.X, currentPos.Y - 5, currentPos.Z))  -- Move down by 5 units
         end
     end
 end)
