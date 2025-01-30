@@ -16,10 +16,6 @@ local DesyncRotationSpeed = 5
 local flipToggle = true
 local noatvrestriction = true -- No look restriction always enabled (remove if no longer needed)
 
-local gravityEnabled = true -- Toggle gravity on/off
-local isUpwardMovement = false -- To track whether we're actively moving upward
-local lastPosition = Vector3.zero -- To store the last position when gravity is off and E is pressed
-
 local function clampSpeed(value, min, max)
     return math.max(min, math.min(max, value))
 end
@@ -102,7 +98,6 @@ local function FlyHack()
             local travel = Vector3.zero
             local cameraCFrame = Workspace.CurrentCamera.CFrame
 
-            -- WASD controls
             if UserInputService:IsKeyDown(Enum.KeyCode.W) then
                 travel += cameraCFrame.LookVector
             end
@@ -115,20 +110,13 @@ local function FlyHack()
             if UserInputService:IsKeyDown(Enum.KeyCode.A) then
                 travel -= cameraCFrame.RightVector
             end
-
-            -- E for upward movement
-            if isUpwardMovement then
-                travel += cameraCFrame.UpVector
-            end
-
             if UserInputService:IsKeyDown(Enum.KeyCode.X) then
-                travel -= cameraCFrame.UpVector
+                travel += cameraCFrame.UpVector
             end
             if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
                 travel -= cameraCFrame.UpVector
             end
 
-            -- Apply speed and movement
             if travel.Magnitude > 0 then
                 plastics.Anchored = false
                 plastics.Velocity = travel.Unit * speed
@@ -150,30 +138,35 @@ UserInputService.InputBegan:Connect(function(input)
         adjustSpeed(5)
     elseif input.KeyCode == Enum.KeyCode.N then
         adjustSpeed(-5)
+    elseif input.KeyCode == Enum.KeyCode.Q then
+        toggleSpeed()
     elseif input.KeyCode == Enum.KeyCode.Z then
         Enabled = not Enabled
     elseif input.KeyCode == Enum.KeyCode.F then
         toggleATVCollision()
-    elseif input.KeyCode == Enum.KeyCode.L then
-        -- Toggle gravity and speed at the same time
-        gravityEnabled = not gravityEnabled
-        if gravityEnabled then
-            workspace.Gravity = 196.2 -- default gravity
-        else
-            workspace.Gravity = 0 -- no gravity
+    elseif input.KeyCode == Enum.KeyCode.L and UserInputService:IsKeyDown(Enum.KeyCode.RightShift) then
+        if ClosestATV then
+            ClosestATV:SetPrimaryPartCFrame(ClosestATV.PrimaryPart.CFrame * CFrame.Angles(0, math.rad(-5), 0))
         end
-        toggleSpeed() -- Also toggles the speed when L is pressed
-    elseif input.KeyCode == Enum.KeyCode.E then
-        -- Enable upward movement when E is pressed
-        isUpwardMovement = true
-    end
-end)
-
-UserInputService.InputEnded:Connect(function(input)
-    if input.KeyCode == Enum.KeyCode.E then
-        -- Disable upward movement when E is released
-        isUpwardMovement = false
+    elseif input.KeyCode == Enum.KeyCode.R and UserInputService:IsKeyDown(Enum.KeyCode.RightShift) then
+        if ClosestATV then
+            ClosestATV:SetPrimaryPartCFrame(ClosestATV.PrimaryPart.CFrame * CFrame.Angles(0, math.rad(5), 0))
+        end
     end
 end)
 
 FlyHack()
+
+RunService.RenderStepped:Connect(function()
+    for _, v in ipairs(Workspace:GetChildren()) do
+        local frame = v:FindFirstChild("Frame")
+        if frame then
+            local flip = frame:FindFirstChild("Flip")
+            if flip and atvbypass then
+                flip.Enabled = true
+                flip.RigidityEnabled = true
+                flip.Responsiveness = math.huge
+            end
+        end
+    end
+end)
