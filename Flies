@@ -21,7 +21,7 @@ local speedEnabled = true  -- Speed toggle variable
 local function toggleLongNeck()
     longNeckEnabled = not longNeckEnabled
     if longNeckEnabled then
-        workspace.Const.Ignore.LocalCharacter.Top.Prism1.CFrame = originalPrismCFrame - Vector3.yAxis * 15
+        workspace.Const.Ignore.LocalCharacter.Top.Prism1.CFrame = originalPrismCFrame - Vector3.yAxis * 8
     else
         workspace.Const.Ignore.LocalCharacter.Top.Prism1.CFrame = originalPrismCFrame
     end
