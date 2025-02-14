@@ -11,10 +11,11 @@ local Workspace = workspace
 
 -- Character
 local character = workspace.Const.Ignore.LocalCharacter
-local middle = character.Middle
-local bottom = character.Bottom
-local top = character.Top
-local prism = top:FindFirstChild("Prism1")
+local middle = workspace.Const.Ignore.LocalCharacter.Middle
+    local bottom = workspace.Const.Ignore.LocalCharacter.Bottom
+    local top = workspace.Const.Ignore.LocalCharacter.Top
+    local originalprismcframe = top.Prism1.CFrame
+    local pos = middle.CFrame
 
 if not prism then
     warn("Prism1 not found in character.Top")
