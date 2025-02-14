@@ -7,66 +7,49 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/ScrewMaker/yenoMarket
 -- Services
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
-local Camera = workspace.CurrentCamera
-local Workspace = workspace
 
--- Character
+-- Character References
 local character = workspace.Const.Ignore.LocalCharacter
 local middle = character.Middle
 local bottom = character.Bottom
 local top = character.Top
 local prism = top:FindFirstChild("Prism1")
-local originalPrismCFrame = prism.CFrame
+
+if not prism then
+    warn("Prism1 not found in character.Top")
+    return
+end
 
 -- Variables
 local longNeckEnabled = false
 local freecamEnabled = false
-local collisionToggle = false
+local atvFlyEnabled = false
+local speed = 10
 local freecamOffset = Vector3.zero
-local ClosestATV = nil
-local speed = 55
-local travel = Vector3.zero
-local Enabled = false
-local atvbypass = true
-local hover_position = nil
+local pos = middle.CFrame
+local originalPrismCFrame = prism.CFrame
 
--- ATV No Look Restriction
-local trident = { gc = { camera = nil } }
-LPH_JIT_MAX(function()
-    for _, v in pairs(getgc(true)) do
-        if type(v) == "table" and type(rawget(v, "SetMaxRelativeLookExtentsY")) == "function" then
-            trident.gc.camera = v
-        end
-    end
-end)()
+-- ATV Fly Variables
+local atvCar = nil
+local atvDist = 50
+local atvSpeed = 55
+local atvUpSpeed = 15
+local atvAccel = 100
+local atvBuildup = 0
+local atvLastDir = Vector3.new(1, 0, 0)
+local speedEnabled = true  -- Speed toggle variable
 
-task.spawn(function()
-    while task.wait() do
-        if trident.gc.camera then
-            trident.gc.camera.SetMaxRelativeLookExtentsY(10000)
-        end
-    end
-end)
-
--- ATV Collision Toggle / Noclip (F Key)
-local function toggleATVCollision()
-    if not ClosestATV then return end
-    collisionToggle = not collisionToggle
-    for _, part in ipairs(ClosestATV:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.CanCollide = collisionToggle
-        end
-    end
-end
-
--- Toggle Long Neck (L Key)
+-- Function to Toggle Long Neck
 local function toggleLongNeck()
     longNeckEnabled = not longNeckEnabled
-    prism.CFrame = longNeckEnabled and (originalPrismCFrame - Vector3.yAxis * 8) or originalPrismCFrame
+    if longNeckEnabled then
+        prism.CFrame = originalPrismCFrame - Vector3.yAxis * 8
+    else
+        prism.CFrame = originalPrismCFrame
+    end
 end
 
--- Toggle Freecam (C Key)
+-- Function to Toggle Freecam
 local function toggleFreecam()
     freecamEnabled = not freecamEnabled
     middle.CanCollide = not freecamEnabled
@@ -74,134 +57,107 @@ local function toggleFreecam()
     top.CanCollide = not freecamEnabled
 end
 
--- ATV Fly (Z Key)
--- Inside FlyHack function, replace the velocity part with this:
-
-local function FlyHack()
-    RunService.RenderStepped:Connect(function()
-        if not Enabled then return end
-
-        local plastics = ClosestATV and ClosestATV:FindFirstChild("Plastics")
-        if plastics then
-            plastics.Velocity = Vector3.zero
-
-            local flip2 = ClosestATV.Frame:FindFirstChild("Flip2")
-            if not flip2 then
-                local newFlip = ClosestATV.Frame.Flip:Clone()
-                newFlip.Name = "Flip2"
-                newFlip.Enabled = true
-                newFlip.Parent = ClosestATV.Frame
-            else
-                flip2.Enabled = true
-            end
-
-            if travel.Magnitude > 0 then
-                plastics.Anchored = false
-                plastics.Velocity = travel.Unit * speed
-                hover_position = nil
-            else
-                if not hover_position then
-                    hover_position = plastics.Position
-                end
-                plastics.Velocity = Vector3.zero
-                plastics.Anchored = false
-                plastics.Position = hover_position -- This is the hover part
-            end
-        end
-    end)
-end
-
--- Flip Bypass (Auto)
-RunService.RenderStepped:Connect(function()
-    for _, v in ipairs(Workspace:GetChildren()) do
-        local frame = v:FindFirstChild("Frame")
-        if frame then
-            local flip = frame:FindFirstChild("Flip")
-            if flip and atvbypass then
-                flip.Enabled = true
-                flip.RigidityEnabled = true
-                flip.Responsiveness = math.huge
-            end
-        end
-    end
-end)
-
--- ATV Detection
-local function GetClosestATV()
-    local closest, dist = nil, 50
-    for _, v in ipairs(Workspace:GetChildren()) do
+-- Function to Find ATV
+local function findATV()
+    atvCar, atvDist = nil, 50
+    for _, v in pairs(workspace:GetChildren()) do
         if v:FindFirstChild("Seat") and v:FindFirstChild("Frame") then
             local distance = (v.Frame.Position - middle.Position).Magnitude
-            if distance < dist then
-                closest, dist = v, distance
+            if distance < atvDist then
+                atvCar = v
+                atvDist = distance
             end
         end
     end
-    return closest
 end
 
--- Keybinds
-UserInputService.InputBegan:Connect(function(input, isProcessed)
-    if isProcessed then return end
+-- Function to Update ATV Fly
+local function updateATVFly(delta)
+    if atvFlyEnabled and atvCar and atvCar:FindFirstChild("Frame") and (atvCar.Frame.CFrame.Position - workspace.CurrentCamera.CFrame.Position).Magnitude <= 50 then
+        local cameraLook = workspace.CurrentCamera.CFrame.LookVector
+        cameraLook = Vector3.new(cameraLook.X, 0, cameraLook.Z)
+        local direction = Vector3.zero
+        direction = UserInputService:IsKeyDown(Enum.KeyCode.W) and direction + cameraLook or direction
+        direction = UserInputService:IsKeyDown(Enum.KeyCode.S) and direction - cameraLook or direction
+        direction = UserInputService:IsKeyDown(Enum.KeyCode.D) and direction + Vector3.new(-cameraLook.Z, 0, cameraLook.X) or direction
+        direction = UserInputService:IsKeyDown(Enum.KeyCode.A) and direction + Vector3.new(cameraLook.Z, 0, -cameraLook.X) or direction
+        direction = UserInputService:IsKeyDown(Enum.KeyCode.V) and direction + Vector3.yAxis or direction
+        direction = UserInputService:IsKeyDown(Enum.KeyCode.B) and direction - Vector3.yAxis or direction
 
+                if direction ~= Vector3.zero then
+                direction = direction.Unit
+                if direction ~= Vector3.yAxis and -direction ~= Vector3.yAxis then
+                    buildup = math.clamp(buildup + delta * accel, 0, speed)
+                    lastdir = direction
+                end
+            else
+                direction = lastdir
+                buildup = math.clamp(buildup - delta * 150, 0, speed)
+            end
+
+        for _, v in pairs(atvCar:GetChildren()) do
+            v.AssemblyLinearVelocity = _Vector3new(direction.X * buildup, direction.Y * upspeed, direction.Z * buildup)
+                --v.AssemblyLinearVelocity = direction * SPEED + _Vector3new(0, 0.05, 0)
+                --v.CFrame = _CFramenew(v.CFrame.Position) * CFrame.Angles(0, y+(math.pi/2), 0)
+            end
+        elseif not car or car and car:FindFirstChild("Frame") and (car.Frame.CFrame.p - Camera.CFrame.p).Magnitude > 50 then
+            findcar()
+            buildup = 0
+        else
+            buildup = 0
+        end
+    end))
+
+-- Freecam Movement Logic
+RunService.Heartbeat:Connect(function(delta)
+    if freecamEnabled and middle then
+        middle.CFrame = pos
+        RunService.RenderStepped:Wait()
+        
+        if middle then
+            local cameralook = workspace.CurrentCamera.CFrame.LookVector
+            local direction = Vector3.zero
+            direction = UserInputService:IsKeyDown(Enum.KeyCode.W) and direction + cameralook or direction
+            direction = UserInputService:IsKeyDown(Enum.KeyCode.S) and direction - cameralook or direction
+            direction = UserInputService:IsKeyDown(Enum.KeyCode.D) and direction + Vector3.new(-cameralook.Z, 0, cameralook.X) or direction
+            direction = UserInputService:IsKeyDown(Enum.KeyCode.A) and direction + Vector3.new(cameralook.Z, 0, -cameralook.X) or direction
+
+            if direction ~= Vector3.zero then
+                direction = direction.Unit
+            end
+
+            freecamOffset = freecamOffset + (direction * delta * speed)
+            middle.CFrame = pos + freecamOffset
+            middle.AssemblyLinearVelocity = Vector3.zero
+        end
+    elseif middle then
+        freecamOffset = Vector3.zero
+        pos = middle.CFrame
+    end
+end)
+
+-- ATV Fly Update Loop
+RunService.RenderStepped:Connect(function(delta)
+    if atvFlyEnabled then
+        updateATVFly(delta)
+    end
+end)
+
+-- Key Binds
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
     if input.KeyCode == Enum.KeyCode.L then
         toggleLongNeck()
-    elseif input.KeyCode == Enum.KeyCode.C then
-        toggleFreecam()
     elseif input.KeyCode == Enum.KeyCode.F then
-        toggleATVCollision()
+        toggleFreecam()
     elseif input.KeyCode == Enum.KeyCode.Z then
-        Enabled = not Enabled
+        atvFlyEnabled = not atvFlyEnabled
+        findATV()
+    elseif input.KeyCode == Enum.KeyCode.Q then
+        speedEnabled = not speedEnabled
     end
 end)
+        
+    
 
--- Movement for ATV Fly
-RunService.RenderStepped:Connect(function()
-    ClosestATV = GetClosestATV()
-
-    if Enabled and ClosestATV then
-        local cameralook = Camera.CFrame.LookVector
-        cameralook = Vector3.new(cameralook.X, 0, cameralook.Z)
-
-        travel = Vector3.zero
-        if UserInputService:IsKeyDown(Enum.KeyCode.W) then travel += cameralook end
-        if UserInputService:IsKeyDown(Enum.KeyCode.S) then travel -= cameralook end
-        if UserInputService:IsKeyDown(Enum.KeyCode.D) then travel += Vector3.new(-cameralook.Z, 0, cameralook.X) end
-        if UserInputService:IsKeyDown(Enum.KeyCode.A) then travel += Vector3.new(cameralook.Z, 0, -cameralook.X) end
-        if UserInputService:IsKeyDown(Enum.KeyCode.V) then travel += Vector3.yAxis end
-        if UserInputService:IsKeyDown(Enum.KeyCode.B) then travel -= Vector3.yAxis end
-    else
-        travel = Vector3.zero
-    end
-end)
-
-FlyHack()
-
--- Hitbox Expander (Auto)
-local hitboxSize = 10
-local cancollide = false
-
-local function updateHitbox(character)
-    local head = character:FindFirstChild("Head")
-    if head then
-        head.Size = Vector3.new(hitboxSize, hitboxSize, hitboxSize)
-        head.Transparency = 0.5
-        head.CanCollide = cancollide
-    end
-end
-
-for _, obj in pairs(workspace:GetChildren()) do
-    if obj:IsA("Model") and obj:FindFirstChild("Head") then
-        updateHitbox(obj)
-    end
-end
-
-workspace.ChildAdded:Connect(function(obj)
-    if obj:IsA("Model") and obj:FindFirstChild("Head") then
-        updateHitbox(obj)
-    end
-end)
-
-Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(updateHitbox)
-end)
