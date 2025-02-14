@@ -1,4 +1,3 @@
-
 if not LPH_OBFUSCATED then
     LPH_JIT_MAX = function(...) return ... end
 end
@@ -16,6 +15,7 @@ local middle = character.Middle
 local bottom = character.Bottom
 local top = character.Top
 local prism = top:FindFirstChild("Prism1")
+local originalPrismCFrame = prism.CFrame
 
 -- Variables
 local longNeckEnabled = false
@@ -29,10 +29,11 @@ local Enabled = false
 local atvbypass = true
 local hover_position = nil
 
-local MIN_SPEED = 10 -- Optional, just for safety if you want limits
+local MIN_SPEED = 10
 local MAX_SPEED = 150
-local previousSpeed = 55 -- Set this to your normal default speed
+local previousSpeed = 55
 local isSpeedToggled = false
+local atvFlyEnabled = false
 
 -- ATV No Look Restriction
 local trident = { gc = { camera = nil } }
@@ -100,8 +101,6 @@ local function toggleFreecam()
 end
 
 -- ATV Fly (Z Key)
--- Inside FlyHack function, replace the velocity part with this:
-
 local function FlyHack()
     RunService.RenderStepped:Connect(function()
         if not Enabled then return end
@@ -130,7 +129,7 @@ local function FlyHack()
                 end
                 plastics.Velocity = Vector3.zero
                 plastics.Anchored = false
-                plastics.Position = hover_position -- This is the hover part
+                plastics.Position = hover_position
             end
         end
     end)
@@ -165,6 +164,11 @@ local function GetClosestATV()
     return closest
 end
 
+local function findATV()
+    ClosestATV = GetClosestATV()
+    Enabled = atvFlyEnabled
+end
+
 -- Keybinds
 UserInputService.InputBegan:Connect(function(input, isProcessed)
     if isProcessed then return end
@@ -172,7 +176,7 @@ UserInputService.InputBegan:Connect(function(input, isProcessed)
     if input.KeyCode == Enum.KeyCode.L then
         toggleLongNeck()
     elseif input.KeyCode == Enum.KeyCode.F then
-        toggleATVCollision() -- Assuming this is your noclip toggle thing
+        toggleATVCollision()
     elseif input.KeyCode == Enum.KeyCode.Z then
         atvFlyEnabled = not atvFlyEnabled
         findATV()
