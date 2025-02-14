@@ -15,7 +15,11 @@ local middle = character.Middle
 local bottom = character.Bottom
 local top = character.Top
 local prism = top:FindFirstChild("Prism1")
-local originalPrismCFrame = prism.CFrame
+
+if not prism then
+    warn("Prism1 not found in character.Top")
+    return
+end
 
 -- Variables
 local longNeckEnabled = false
