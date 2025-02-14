@@ -29,6 +29,11 @@ local Enabled = false
 local atvbypass = true
 local hover_position = nil
 
+local MIN_SPEED = 10 -- Optional, just for safety if you want limits
+local MAX_SPEED = 150
+local previousSpeed = 55 -- Set this to your normal default speed
+local isSpeedToggled = false
+
 -- ATV No Look Restriction
 local trident = { gc = { camera = nil } }
 LPH_JIT_MAX(function()
@@ -56,6 +61,24 @@ local function toggleATVCollision()
             part.CanCollide = collisionToggle
         end
     end
+end
+
+local function clampSpeed(value, min, max)
+    return math.max(min, math.min(max, value))
+end
+
+local function adjustSpeed(amount)
+    speed = clampSpeed(speed + amount, MIN_SPEED, MAX_SPEED)
+end
+
+local function toggleSpeed()
+    if isSpeedToggled then
+        speed = previousSpeed
+    else
+        previousSpeed = speed
+        speed = 28
+    end
+    isSpeedToggled = not isSpeedToggled
 end
 
 -- Toggle Long Neck (L Key)
@@ -128,15 +151,17 @@ end)
 local function GetClosestATV()
     local closest, dist = nil, 50
     for _, v in ipairs(Workspace:GetChildren()) do
-        if v:FindFirstChild("Seat") and v:FindFirstChild("Frame") then
-            local distance = (v.Frame.Position - middle.Position).Magnitude
-            if distance < dist then
-                closest, dist = v, distance
+        if v:FindFirstChild("Seat") and v:FindFirstChild("Plastics") then
+                local distance = (v.Plastics.Position - Workspace.Ignore.LocalCharacter.Middle.Position).Magnitude
+                if distance < closestDistance then
+                    closestATV = v
+                    closestDistance = distance
+                end
             end
         end
+
+        return closestATV
     end
-    return closest
-end
 
 -- Keybinds
 UserInputService.InputBegan:Connect(function(input, isProcessed)
@@ -144,12 +169,15 @@ UserInputService.InputBegan:Connect(function(input, isProcessed)
 
     if input.KeyCode == Enum.KeyCode.L then
         toggleLongNeck()
+    elseif input.KeyCode == Enum.KeyCode.F then
+        toggleATVCollision() -- Assuming this is your noclip toggle thing
+    elseif input.KeyCode == Enum.KeyCode.Z then
+        atvFlyEnabled = not atvFlyEnabled
+        findATV()
     elseif input.KeyCode == Enum.KeyCode.C then
         toggleFreecam()
-    elseif input.KeyCode == Enum.KeyCode.F then
-        toggleATVCollision()
-    elseif input.KeyCode == Enum.KeyCode.Z then
-        Enabled = not Enabled
+    elseif input.KeyCode == Enum.KeyCode.Q then
+        toggleSpeed()
     end
 end)
 
