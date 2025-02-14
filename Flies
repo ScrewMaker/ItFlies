@@ -1,3 +1,4 @@
+
 if not LPH_OBFUSCATED then
     LPH_JIT_MAX = function(...) return ... end
 end
@@ -15,11 +16,6 @@ local middle = character.Middle
 local bottom = character.Bottom
 local top = character.Top
 local prism = top:FindFirstChild("Prism1")
-
-if not prism then
-    warn("Prism1 not found in character.Top")
-    return
-end
 
 -- Variables
 local longNeckEnabled = false
@@ -159,17 +155,15 @@ end)
 local function GetClosestATV()
     local closest, dist = nil, 50
     for _, v in ipairs(Workspace:GetChildren()) do
-        if v:FindFirstChild("Seat") and v:FindFirstChild("Plastics") then
-                local distance = (v.Plastics.Position - Workspace.Ignore.LocalCharacter.Middle.Position).Magnitude
-                if distance < closestDistance then
-                    closestATV = v
-                    closestDistance = distance
-                end
+        if v:FindFirstChild("Seat") and v:FindFirstChild("Frame") then
+            local distance = (v.Frame.Position - middle.Position).Magnitude
+            if distance < dist then
+                closest, dist = v, distance
             end
         end
-
-        return closestATV
     end
+    return closest
+end
 
 -- Keybinds
 UserInputService.InputBegan:Connect(function(input, isProcessed)
