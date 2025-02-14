@@ -10,17 +10,12 @@ local Camera = workspace.CurrentCamera
 local Workspace = workspace
 
 -- Character
-local character = workspace.Const.Ignore.LocalCharacter
+local top = workspace.Const.Ignore.LocalCharacter.Top
 local middle = workspace.Const.Ignore.LocalCharacter.Middle
-    local bottom = workspace.Const.Ignore.LocalCharacter.Bottom
-    local top = workspace.Const.Ignore.LocalCharacter.Top
-    local originalprismcframe = top.Prism1.CFrame
-    local pos = middle.CFrame
+local bottom = workspace.Const.Ignore.LocalCharacter.Bottom
 
-if not prism then
-    warn("Prism1 not found in character.Top")
-    return
-end
+-- Store the original position of the neck part
+local originalPrismCFrame = top.Prism1.CFrame
 
 -- Variables
 local longNeckEnabled = false
@@ -90,10 +85,13 @@ end
 -- Toggle Long Neck (L Key)
 local function toggleLongNeck()
     longNeckEnabled = not longNeckEnabled
+
     if longNeckEnabled then
-        prism.CFrame = originalPrismCFrame - Vector3.yAxis * 8
+        -- Move the neck part downward
+        top.Prism1.CFrame = originalPrismCFrame - Vector3.yAxis * 8
     else
-        prism.CFrame = originalPrismCFrame
+        -- Reset to original position
+        top.Prism1.CFrame = originalPrismCFrame
     end
 end
 
